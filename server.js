@@ -96,7 +96,8 @@ function validDevice(token, deviceName) {
       }
 
     } else {
-      console.log(error, response.statusCode);
+      console.log(error);
+      console.log(response);
       console.log(body);
       deferred.reject(body.message || "Not Found");
     }
