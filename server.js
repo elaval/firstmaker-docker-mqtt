@@ -10,7 +10,7 @@ var config = require('./config'); // get our config file
 var express     = require('express');
 var app         = express();
 
-var apiClient = request.createClient('http://localhost:8080/');
+var apiClient = request.createClient('http://184.72.79.8:8080/');
  
 mongoose.connect(config.database); // connect to database
 app.set('superSecret', config.secret); // secret variable
@@ -95,7 +95,7 @@ function validDevice(token, deviceName) {
         deferred.reject("Non existent device for this user");
       }
 
-    } else {
+    } else {s
       console.log(error);
       console.log(response);
       console.log(body);
