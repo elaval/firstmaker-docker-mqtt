@@ -1,7 +1,9 @@
+// These are default values, which get overriden by env variables
+// JWT_SECRET
+// MONGO_DATABASE
+// API_URL
 module.exports = {
-
-    'secret': 'ilovescotchyscotch',
-    'database': 'mongodb://184.72.79.8:27017/myjwtapp',
-    'apiUrl' : 'http://localhost:8080'
-
+    'secret': 'this has to be changed',
+    'mqttDb': 'mongodb://localhost:27017/mqtt',
+    'apiUrl' : 'http://localhost:8080/api/'
 };

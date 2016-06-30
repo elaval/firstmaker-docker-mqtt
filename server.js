@@ -1,29 +1,27 @@
  
 var mosca = require('mosca');
-var mongoose    = require('mongoose');
 var jwt    = require('jsonwebtoken'); // used to create, sign, and verify tokens
 var request = require('request-json');
 var Q = require('q');
-var User   = require('./app/models/user'); // get our mongoose model
-var Device   = require('./app/models/device'); // get our mongoose model
 var config = require('./config'); // get our config file
-var express     = require('express');
-var app         = express();
 
-var apiClient = request.createClient('http://184.72.79.8:8080/');
- 
-mongoose.connect(config.database); // connect to database
-app.set('superSecret', config.secret); // secret variable
+// Get config variables from ENVIRONMENT or from defaut config file
+var jwtSecret = process.env.JWT_SECRET || config.secret;
+var apiUrl = process.env.API_URL || config.apiUrl;
+var mqttDb = process.env.MQTT_DB || config.mqttDb;
 
+var apiClient = request.createClient(apiUrl);
 
+//Mosca mqtt broker configuration
 var ascoltatore = {
   //using ascoltatore
   type: 'mongo',
-  url: 'mongodb://184.72.79.8:27017/mqtt',
+  url: mqttDb,
   pubsubCollection: 'ascoltatori',
   mongo: {}
 };
 
+// MQTT Settings (including web sockets http config)
 var settings = {
   port: 1883,
   backend: ascoltatore,
@@ -34,29 +32,28 @@ var settings = {
   }
 };
 
-// Accepts the connection if the username and password are valid
+// Accepts the connection if the username is jwt and teh password is a valid token
 var authenticate = function(client, username, password, callback) {
 
   if (username === 'jwt') {
     var token = password.toString();
     // verifies secret and checks exp
-    jwt.verify(token, app.get('superSecret'), function(err, decoded) {      
+    jwt.verify(token, jwtSecret, function(err, decoded) {      
       if (err) {
         var authorized = false;
 
       } else {
         var authorized = true;
+
+        // The token payload (with user email & username) will be persisted in client.user
+        // The token itself will be persisted in client.token
         client.user = decoded;
         client.token = token;
       }
       callback(null, authorized); 
     });
   } else {
-    var authorized = (username === 'ernesto' && password.toString() === 'clave');
-    if (authorized) client.user = username;
-
-
-    callback(null, authorized);    
+    callback(null, false);    
   }
 
 }
@@ -91,7 +88,7 @@ function validDevice(token, deviceName) {
   var deferred = Q.defer();
 
   // Check if the device name is valid for this user
-  apiClient.get('api/devices/'+deviceName+'?token='+ token, function (error, response, body) {
+  apiClient.get('devices/'+deviceName+'?token='+ token, function (error, response, body) {
     if (!error && response.statusCode == 200) {
       // We found a device with this name for the user
       if (body.deviceName == deviceName) {
