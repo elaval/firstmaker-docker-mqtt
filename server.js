@@ -32,7 +32,7 @@ var settings = {
   }
 };
 
-// Accepts the connection if the username is jwt and teh password is a valid token
+// Accepts the connection if the username is jwt and the password is a valid token
 var authenticate = function(client, username, password, callback) {
 
   if (username === 'jwt') {
@@ -68,27 +68,61 @@ var authorizePublish = function(client, topic, payload, callback) {
   var topic_2 = topicList.length >=2 ? topicList[1] : null;
   var name = client.user.username;
 
-  // Check if the first topic is the udername
+  // Check if the first topic is the username
   if (topic_1 !== name) {
-
     callback(null,false);
   } else {
-    validDevice(client.token,topic_2)
-    .then(function() {
-      callback(null, true);
-    })
-    .catch(function() {
-      callback(null, false);
-    })
+    callback(null, true);
   }
 
 }
 
-function validDevice(token, deviceName) {
+function sendData(packet, client) {
   var deferred = Q.defer();
 
+  var topic = packet.topic;
+  var token = client.token;
+
+  var ua2text = function(ua) {
+    var s = '';
+    for (var i = 0; i < ua.length; i++) {
+        s += String.fromCharCode(ua[i]);
+    }
+    return s;
+  }
+
+  var payload = ua2text(packet.payload);
+
+  var data = {
+    payload: payload,
+  };
+
+  apiClient.headers['Authorization'] = 'Bearer '+token;
+
+  apiClient.post('data/'+topic, data, function(err, res, body) {
+    return console.log(err);
+  });
+
+/*
+  var options = {
+    url: 'https://api.github.com/repos/request/request',
+    headers: {
+      'User-Agent': 'request'
+    }
+  };
+  
+  function callback(error, response, body) {
+    if (!error && response.statusCode == 200) {
+      var info = JSON.parse(body);
+      console.log(info.stargazers_count + " Stars");
+      console.log(info.forks_count + " Forks");
+    }
+  }
+ 
+request(options, callback);
+
   // Check if the device name is valid for this user
-  apiClient.get('devices/'+deviceName+'?token='+ token, function (error, response, body) {
+  apiClient.post('datapoints/'+topic+'?access_token='+ token, function (error, response, body) {
     if (!error && response.statusCode == 200) {
       // We found a device with this name for the user
       if (body.deviceName == deviceName) {
@@ -97,14 +131,14 @@ function validDevice(token, deviceName) {
         deferred.reject("Non existent device for this user");
       }
 
-    } else {s
+    } else {
       console.log(error);
       console.log(response);
       console.log(body);
       deferred.reject(body.message || "Not Found");
     }
   })
-
+*/
   return deferred.promise;
 }
 
@@ -127,6 +161,9 @@ server.on('clientConnected', function(client) {
 
 // fired when a message is received
 server.on('published', function(packet, client) {
+  // If data received from a client, send it to the API
+  if (client) sendData(packet, client);
+
   console.log('Published', packet.payload);
 });
 
@@ -138,4 +175,5 @@ function setup() {
   server.authorizeSubscribe = authorizeSubscribe;
   console.log('Mosca server is up and running');
 }
+
 
