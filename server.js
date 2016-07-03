@@ -77,12 +77,25 @@ var authorizePublish = function(client, topic, payload, callback) {
 
 }
 
+/**
+ * Sends the published date to our backendAPI
+ */
 function sendData(packet, client) {
   var deferred = Q.defer();
 
+  // Topic is expecetd in the form /username/device/pin (E.g. /jsmith/my-arduino/1)
   var topic = packet.topic;
+
+  var topicList = topic.split('/');
+
+  var username = topicList.length >=1 ? topicList[0] : null;  // Currently not used
+  var deviceName = topicList.length >=2 ? topicList[1] : null;
+  var pin = topicList.length >=3 ? topicList[2] : null;
+
+  // Authorization token is needed to communicate to the API 
   var token = client.token;
 
+  // Auxiliary function that converts a uint8array (aray of bytes) to a text represnetation
   var ua2text = function(ua) {
     var s = '';
     for (var i = 0; i < ua.length; i++) {
@@ -91,54 +104,25 @@ function sendData(packet, client) {
     return s;
   }
 
-  var payload = ua2text(packet.payload);
+  var value = ua2text(packet.payload);
 
+  //The endpoint will expect an object with a value attribute
   var data = {
-    payload: payload,
+    "value": value,
   };
 
+  // We will send the token as an Authorization header
   apiClient.headers['Authorization'] = 'Bearer '+token;
 
-  apiClient.post('data/'+topic, data, function(err, res, body) {
-    return console.log(err);
+  // update the pins value through endpoint /api/devices/:deviceName/pins/:pin
+  apiClient.put('devices/'+deviceName+'/pins/'+pin, data, function(err, res, body) {
+    if (err) {
+      deferred.reject(err);
+    } else {
+      deferred.resolve();
+    }
   });
 
-/*
-  var options = {
-    url: 'https://api.github.com/repos/request/request',
-    headers: {
-      'User-Agent': 'request'
-    }
-  };
-  
-  function callback(error, response, body) {
-    if (!error && response.statusCode == 200) {
-      var info = JSON.parse(body);
-      console.log(info.stargazers_count + " Stars");
-      console.log(info.forks_count + " Forks");
-    }
-  }
- 
-request(options, callback);
-
-  // Check if the device name is valid for this user
-  apiClient.post('datapoints/'+topic+'?access_token='+ token, function (error, response, body) {
-    if (!error && response.statusCode == 200) {
-      // We found a device with this name for the user
-      if (body.deviceName == deviceName) {
-        deferred.resolve(true);
-      } else {
-        deferred.reject("Non existent device for this user");
-      }
-
-    } else {
-      console.log(error);
-      console.log(response);
-      console.log(body);
-      deferred.reject(body.message || "Not Found");
-    }
-  })
-*/
   return deferred.promise;
 }
 
