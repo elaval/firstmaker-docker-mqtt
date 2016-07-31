@@ -83,45 +83,57 @@ var authorizePublish = function(client, topic, payload, callback) {
 function sendData(packet, client) {
   var deferred = Q.defer();
 
-  // Topic is expecetd in the form /username/device/pin (E.g. /jsmith/my-arduino/1)
+  // Topic is expecetd in the form /username/device/{deviceName}/pin (E.g. /jsmith/my-arduino/1)
   var topic = packet.topic;
 
   var topicList = topic.split('/');
 
   var username = topicList.length >=1 ? topicList[0] : null;  // Currently not used
-  var deviceName = topicList.length >=2 ? topicList[1] : null;
-  var pin = topicList.length >=3 ? topicList[2] : null;
+  var type = topicList.length >=2 ? topicList[1] : null;
 
-  // Authorization token is needed to communicate to the API 
-  var token = client.token;
 
-  // Auxiliary function that converts a uint8array (aray of bytes) to a text represnetation
-  var ua2text = function(ua) {
-    var s = '';
-    for (var i = 0; i < ua.length; i++) {
-        s += String.fromCharCode(ua[i]);
+  // username/device/{deviceName}/{pin}
+  if (type == "device") {
+    var deviceName = topicList.length >=3 ? topicList[2] : null;
+    var pin = topicList.length >=4 ? topicList[3] : null;
+
+    // Authorization token is needed to communicate to the API 
+    var token = client.token;
+
+    // Auxiliary function that converts a uint8array (aray of bytes) to a text represnetation
+    var ua2text = function(ua) {
+      var s = '';
+      for (var i = 0; i < ua.length; i++) {
+          s += String.fromCharCode(ua[i]);
+      }
+      return s;
     }
-    return s;
+
+    var value = ua2text(packet.payload);
+
+    //The endpoint will expect an object with a value attribute
+    var data = {
+      "value": value,
+    };
+
+    // We will send the token as an Authorization header
+    apiClient.headers['Authorization'] = 'Bearer '+token;
+
+    // update the pins value through endpoint /api/devices/:deviceName/pins/:pin
+    apiClient.put('devices/'+deviceName+'/pins/'+pin, data, function(err, res, body) {
+      if (err) {
+        deferred.reject(err);
+      } else {
+        deferred.resolve();
+      }
+    });
+
+  } else {
+    // It is not a "device" publication
+    deferred.resolve();
   }
 
-  var value = ua2text(packet.payload);
 
-  //The endpoint will expect an object with a value attribute
-  var data = {
-    "value": value,
-  };
-
-  // We will send the token as an Authorization header
-  apiClient.headers['Authorization'] = 'Bearer '+token;
-
-  // update the pins value through endpoint /api/devices/:deviceName/pins/:pin
-  apiClient.put('devices/'+deviceName+'/pins/'+pin, data, function(err, res, body) {
-    if (err) {
-      deferred.reject(err);
-    } else {
-      deferred.resolve();
-    }
-  });
 
   return deferred.promise;
 }

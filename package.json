@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "jsonwebtoken": "^7.0.1",
-    "mosca": "^2.0.1",
+    "mosca": "^2.0.2",
     "q": "^1.4.1",
     "request-json": "^0.5.6"
   }
