@@ -36,7 +36,8 @@ var settings = {
 var authenticate = function(client, username, password, callback) {
 
   if (username === 'jwt') {
-    var token = password.toString();
+
+    var token = password ? password.toString() : "";
     // verifies secret and checks exp
     jwt.verify(token, jwtSecret, function(err, decoded) {      
       if (err) {
